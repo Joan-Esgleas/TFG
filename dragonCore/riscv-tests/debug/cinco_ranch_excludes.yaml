@@ -1,0 +1,18 @@
+# cinco_ranch skipped test
+# It can be passed to gdb_server.py using the --exclude-tests argument.
+
+cinco_ranch:
+  # We do not implemnet hw triggers
+  - EtriggerTest
+  - IcountTest
+  - ProgramHwWatchpoint
+  - TriggerExecuteInstant
+  - TriggerLoadAddressInstant
+  - TriggerStoreAddressInstant
+  - SemihostingFileio
+  # we do not have a FreeRtosTest cinco_ranch image
+  - FreeRtosTest
+  # Known failing tests due to a stepi corner case
+  - DebugBreakpoint
+  - StepTest
+  - PrivChange

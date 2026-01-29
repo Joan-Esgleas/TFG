@@ -1,0 +1,13 @@
+# Sargantana skipped test
+# It can be passed to gdb_server.py using the --exclude-tests argument.
+
+sargantana:
+  # We do not implemnet hw triggers
+  - EtriggerTest
+  - IcountTest
+  - ProgramHwWatchpoint
+  - TriggerExecuteInstant
+  - TriggerLoadAddressInstant
+  - TriggerStoreAddressInstant
+  # we do not have a FreeRtosTest sargantana image
+  - FreeRtosTest

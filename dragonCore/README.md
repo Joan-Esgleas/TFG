@@ -1,0 +1,81 @@
+# Drago Tile
+
+This module includes the Drago core, as well as the iCache, dCache (HPDCache from OpenHardware), and MMU to make it all work.
+
+## Table of Contents
+
+- [Drago Tile](#drago-tile)
+  - [Table of Contents](#table-of-contents)
+  - [1. Installing the dependencies](#1-installing-the-dependencies)
+  - [2. Building the simulator](#2-building-the-simulator)
+    - [2.1 Verilator](#21-verilator)
+  - [2. Building tests and benchmarks](#2-building-tests-and-benchmarks)
+  - [4. Running simulations](#4-running-simulations)
+    - [4.1 Optional parameters](#41-optional-parameters)
+    - [4.2 Running the ISA tests or benchmarks](#42-running-the-isa-tests-or-benchmarks)
+
+## 1. Installing the dependencies
+
+The following software is required to build the basic simulator internals, bootrom, and the RISC-V tests and benchmarks:
+
+- `gcc >= 10.5`
+- `riscv64-unknown-elf-gcc >= 12.0`
+- `device-tree-compiler` (any recent version should work)
+- `libboost-regex-dev >= 1.53`
+
+The following table provides the simulators supported and the minimum versions:
+
+| Simulator | Minimum Version |
+|-----------|-----------------|
+| Verilator | 5.004           |
+
+Optionally, to visualize waveforms the following software can be used:
+
+- `gtkwave` (any recent version should work)
+
+Optionally, to visualize pipeline diagrams, the following software can be used:
+
+- `konata == v0.34`
+
+## 2. Building the simulator
+
+### 2.1 Verilator
+
+To build the simulator run `make -j$(nproc) sim` from the root folder of the project. That should build the bootrom and the simulator itself (as well as some needed libraries from `riscv-isa-sim`).
+
+## 2. Building tests and benchmarks
+
+Before being able to do any simulations, we need to build the binaries to simulate.
+If you already have those, you can skip to section [4. Running simulations](#4-running-simulations).
+
+The ISA tests are a basic set of tests checking most ISA instructions and the general working of the core.
+To build the ISA tests run the following command:
+
+`make -j$(nproc) build-isa-tests`
+
+The benchmarks available are from the `riscv-tests` repository, plus some custom ones which check basic performance characteristics of the core.
+To build the benchmarks run the following command:
+
+`make -j$(nproc) build-benchmarks`
+
+## 4. Running simulations
+
+To run a simulation using **Verilator**, use the following command:
+
+`./sim +load=<path/to/binary>`
+
+### 4.1 Optional parameters
+
+- `+vcd[=path/to/waveform.vcd]` Generates a waveform of the simulation. By default, it will save it as `dump.vcd`.
+- `+commit_log[=path/to/log.txt]` Generates a log of the commited instructions. By default, it will save it as `signature.txt`.
+- `+konata_dump[=path/to/konata.txt]` Generates a dump of the pipeline to later be visualized as a pipeline diagram using konata. By default, it will save it as `konata.txt`.
+
+The output of all the optional parameters can be overriden by appending `=` and the path of the desired output.
+
+### 4.2 Running the ISA tests or benchmarks
+
+You can run all test or benchmarks using `make run-isa-tests` or `make run-benchmarks` respectively.
+
+The individual programs can be run individually using:
+- `<simulator> +load=<tb/tb_isa_tests/build/isa/<binary>` or
+- `<simulator> +load=<benchmarks/benchmarks/<binary>`
