@@ -25,7 +25,8 @@ RUN apt update \
 
 # silicon compiler install
 && apt-get -y install python3-dev python3-pip python3-venv \
-&& git clone -b v0.36.3 https://github.com/siliconcompiler/siliconcompiler.git \
+#&& git clone -b v0.36.3 https://github.com/siliconcompiler/siliconcompiler.git \
+#&& mv siliconcompiler /home/ubuntu \
 
 && DEBIAN_FRONTEND=noninteractive TZ=Europe/Madrid apt-get -y install tzdata \
 #&& apt-get -y install gcc-riscv64-unknown-elf \
@@ -54,17 +55,18 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RISCV/lib
 ENV PATH=$PATH:$RISCV/bin
 
 
-# Update the package list, install sudo, create a non-root user, and grant password-less sudo permissions
-#RUN apt update && \
-#    apt install -y sudo
+RUN apt-get install -y sudo \
+    && useradd -m -s /bin/bash silcomp \
+    && echo 'silcomp ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-#&& grep -q ":$GID:" /etc/group || groupadd -g $GID silcomp 
-#&& adduser --uid $UID --gid $GID --disabled-password --gecos "" silcomp && \
-#    echo 'silcomp ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+USER silcomp
 
-# Set the non-root user as the default user
-USER ubuntu
+WORKDIR /home/silcomp/
 
-# Set the working directory
-WORKDIR /home/ubuntu/
+RUN python3 -m venv .venv \
+    && .venv/bin/pip install --upgrade pip \
+    && .venv/bin/pip install siliconcompiler
+
+ENV VIRTUAL_ENV=/home/silcomp/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
