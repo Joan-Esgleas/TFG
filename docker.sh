@@ -11,7 +11,7 @@ if [ "$1" == "build" ]; then
 elif [ "$1" == "init" ]; then
     # Run the Docker container
     xhost +local:docker
-    docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/home/silcomp/.Xauthority:rw" --volume="$pwd/labs:/home/ubuntu/labs"  -it silcomp:1.0
+    docker run --net=host --env="DISPLAY" --volume="$HOME/.Xauthority:/home/silcomp/.Xauthority:rw" --volume="$pwd/:/home/ubuntu"  -it silcomp:1.0
     xhost -local:docker
 
 elif [ "$1" == "rm" ]; then
