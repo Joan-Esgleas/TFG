@@ -1,3 +1,7 @@
 konata-linux-x64/
 konata-linux-x64/*
 .bash_history
+./venv
+venv/*
+venv/
+
