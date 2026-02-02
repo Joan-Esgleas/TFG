@@ -270,11 +270,25 @@ module datapath
         // When the bypass is enabled, we do not need to check the data dependency
         assign rr_cu_int.data_dependency = 1'b0;
     `else
-        // TODO: complete the data dependency logic for the lab4
-        // Cheching data dependency
-        // 1. check dependency with EXE stage
-        // 2. check dependency with WB stage
-        assign rr_cu_int.data_dependency = ...;
+      // TODO: complete the data dependency logic for the lab4
+      // Cheching data dependency
+      // 1. check dependency with EXE stage
+      // 2. check dependency with WB stage
+      // Signals to check:
+      // RR: stage_id_rr_q.rs1 // Source register 1 in RR stage
+      //        stage_id_rr_q.rs2 // Source register 2 in RR stage
+      // EXE: from_rr_exe.instr.valid // Instruction in EXE stage valid
+      //          from_rr_exe.instr.rd // Destination register in EXE stage
+      //          from_rr_exe.instr.regfile_we // Write enable in EXE stage
+      // WB: exe_to_wb_wbvalid // Instruction in WB stage valid
+      //         exe_to_wb_wbrd // Destination register in WB stage
+      //         exe_to_wb_wbregfile_we // Write enable in WB stage
+        assign rr_cu_int.data_dependency = ((stage_id_rr_q.rs1 != 0) &&
+                                              ((from_rr_exe.instr.valid && from_rr_exe.instr.regfile_we && (stage_id_rr_q.rs1 == from_rr_exe.instr.rd))
+                                              || (exe_to_wb_wb.valid & exe_to_wb_wb.regfile_we && (stage_id_rr_q.rs1 == exe_to_wb_wb.rd))))
+                                           || ((stage_id_rr_q.rs2 != 0) &&
+                                              ((from_rr_exe.instr.valid && from_rr_exe.instr.regfile_we && (stage_id_rr_q.rs2 == from_rr_exe.instr.rd))
+                                              || (exe_to_wb_wb.valid && exe_to_wb_wb.regfile_we && (stage_id_rr_q.rs2 == exe_to_wb_wb.rd))));
     `endif
 
     // RR Stage
@@ -333,8 +347,19 @@ module datapath
         `ifdef BYPASS_ENABLE
             // TODO: complete the bypass logic for the lab4
             // bypass from WB to EXE
-            from_rr_exe.data_rs1 = ...;
-            from_rr_exe.data_rs2 = ...;
+
+            // TODO: complete the bypass logic for the lab4
+            // bypass from WB to EXE
+            // Signals needed:
+            // EXE: stage_rr_exe_q.instr.valid // Instruction in EXE stage valid
+            //          stage_rr_exe_q.instr.rs1 and stage_rr_exe_q.instr.rs2 // Source registers in EXE stage
+            //          stage_rr_exe_q.data_rs1 and stage_rr_exe_q.data_rs2 // Data in the source registers readed in RR
+            // WB:  exe_to_wb_wb.valid // Instruction in WB stage valid
+            //          exe_to_wb_wb.regfile_we // Write enable in WB stage
+            //          exe_to_wb_wb.rd // Destination register in WB stage
+            //          exe_to_wb_wb.result // Result to write in WB stage
+            from_rr_exe.data_rs1 = (exe_to_wb_wb.valid && exe_to_wb_wb.regfile_we && (stage_rr_exe_q.instr.rs1 == exe_to_wb_wb.rd) && (exe_to_wb_wb.rd != 0)) ? exe_to_wb_wb.result:stage_rr_exe_q.data_rs1;
+            from_rr_exe.data_rs2 = (exe_to_wb_wb.valid && exe_to_wb_wb.regfile_we && (stage_rr_exe_q.instr.rs2 == exe_to_wb_wb.rd)&& (exe_to_wb_wb.rd != 0)) ? exe_to_wb_wb.result:stage_rr_exe_q.data_rs2;
         `else
             from_rr_exe.data_rs1 = stage_rr_exe_q.data_rs1;
             from_rr_exe.data_rs2 = stage_rr_exe_q.data_rs2;

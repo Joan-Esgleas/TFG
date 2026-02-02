@@ -24,7 +24,7 @@ module branch_prediction_checker (
             // If it is not a branch instruction
             end else if (!is_inst_branch(instr_type) && instr_type != JALR) begin
                 // Check that the prediction instr is not a branch or the prediction is NOT_TAKEN            
-                correct_branch_pred_o = ...;
+                correct_branch_pred_o = (!bpred.is_branch) || (bpred.decision == NOT_TAKEN);
             // If it is a branch instruction
             end else begin
                 // the prediction is correct if:
@@ -32,7 +32,10 @@ module branch_prediction_checker (
                 // 2. The branch is not taken and prediction is not taken
                 // 3. The branch is not taken and the prediction is taken but the branch address are the same
                 //    (since the branch address is correct, the next pc will be correct) 
-                correct_branch_pred_o = ...;
+                correct_branch_pred_o = ((bpred.decision == TAKEN && taken_branch == TAKEN) && (bpred.pred_addr == result_branch)) ||
+                                        (bpred.decision == NOT_TAKEN && taken_branch == NOT_TAKEN) ||
+                                        ((bpred.decision == TAKEN && taken_branch == NOT_TAKEN) && (bpred.pred_addr == result_branch));
+
             end
         end
     `else
