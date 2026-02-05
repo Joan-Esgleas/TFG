@@ -1,4 +1,4 @@
-FROM ghcr.io/siliconcompiler/sc_tools:v0.36.4
+FROM ghcr.io/siliconcompiler/sc_tools:v0.36.5
 
 RUN apt-get update \
     && apt-get -y install git help2man perl python3 make autoconf g++ flex bison ccache \
@@ -11,6 +11,7 @@ RUN apt-get update \
     && apt-get -y install libx11-xcb1 libgtk-3-0 libxss1 libcanberra-gtk3-module libgbm-dev \
     && apt-get install -y xterm \
     && apt-get -y install sudo \
+    && apt-get -y install xvfb \
     # silicon compiler install
     && apt-get -y install python3-dev python3-pip python3-venv \
     && DEBIAN_FRONTEND=noninteractive TZ=Europe/Madrid apt-get -y install tzdata \
@@ -19,7 +20,9 @@ RUN apt-get update \
     && apt-get -y install device-tree-compiler \
     && apt-get -y install zlib1g-dev \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get update -y \
+    && apt-get upgrade -y
 
 # Download and install Konata
 RUN wget https://github.com/shioyadan/Konata/releases/download/v0.34/konata-linux-x64.tar.gz \
@@ -28,9 +31,9 @@ RUN wget https://github.com/shioyadan/Konata/releases/download/v0.34/konata-linu
     && mv konata-linux-x64 /opt/konata-linux-x64
 
 # Download and install RISC-V toolchain
-RUN wget https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2025.01.20/riscv64-elf-ubuntu-24.04-gcc-nightly-2025.01.20-nightly.tar.xz \
-    && tar -xf riscv64-elf-ubuntu-24.04-gcc-nightly-2025.01.20-nightly.tar.xz \
-    && rm riscv64-elf-ubuntu-24.04-gcc-nightly-2025.01.20-nightly.tar.xz \
+RUN wget https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2024.04.12/riscv64-elf-ubuntu-22.04-gcc-nightly-2024.04.12-nightly.tar.gz \
+    && tar -xzf riscv64-elf-ubuntu-22.04-gcc-nightly-2024.04.12-nightly.tar.gz \
+    && rm riscv64-elf-ubuntu-22.04-gcc-nightly-2024.04.12-nightly.tar.gz \
     && mv riscv /opt/riscv
 
 # Environment variables

@@ -34,7 +34,7 @@ def main():
 
     # Load the pre-defined target for the Skywater130 demo process.
     skywater130_demo(project)
-    project.set('option', 'remote', True)
+    project.set('option', 'remote', False)
     # Execute the compilation flow.
     project.run()
 

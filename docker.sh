@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Fix for rootless Podman on SLURM clusters (no D-Bus session)
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+    export XDG_RUNTIME_DIR="/tmp/${USER}-runtime-$$"
+    mkdir -p "$XDG_RUNTIME_DIR"
+fi
+export DBUS_SESSION_BUS_ADDRESS=""
 
 IMAGE_NAME="silicon-tfg"
 CONTAINER_NAME="silicon-tfg-container"
@@ -124,8 +130,8 @@ salloc_init() {
     local account="share-ie-idi"
     local nodes="1"
     local partition="CPUQ"
-    local cpus="4"
-    local mem="16G"
+    local cpus="16"
+    local mem="32G"
     local time="03:00:00"
 
     # Parse arguments
@@ -202,16 +208,120 @@ salloc_usage() {
     echo "  $0 salloc --mem 32G --time 06:00:00 --cpus 8"
 }
 
+reattach() {
+    local jobid=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -j|--jobid)
+                jobid="$2"
+                shift 2
+                ;;
+            -h|--help)
+                reattach_usage
+                exit 0
+                ;;
+            *)
+                # If no flag, assume it's a job ID
+                if [[ -z "$jobid" ]]; then
+                    jobid="$1"
+                    shift
+                else
+                    print_error "Unknown option: $1"
+                    reattach_usage
+                    exit 1
+                fi
+                ;;
+        esac
+    done
+
+    # If no job ID provided, try to find a running job
+    if [[ -z "$jobid" ]]; then
+        print_info "No job ID specified, searching for running SLURM jobs..."
+        
+        # Get list of running jobs for current user
+        local running_jobs
+        running_jobs=$(squeue -u "$USER" -h -t RUNNING -o "%i %j %N %M" 2>/dev/null)
+        
+        if [[ -z "$running_jobs" ]]; then
+            print_error "No running SLURM jobs found for user $USER"
+            print_info "Use './docker.sh salloc' to start a new allocation"
+            exit 1
+        fi
+
+        local job_count
+        job_count=$(echo "$running_jobs" | wc -l)
+
+        if [[ "$job_count" -eq 1 ]]; then
+            jobid=$(echo "$running_jobs" | awk '{print $1}')
+            local jobname=$(echo "$running_jobs" | awk '{print $2}')
+            local node=$(echo "$running_jobs" | awk '{print $3}')
+            print_info "Found running job: $jobid ($jobname) on node $node"
+        else
+            print_info "Multiple running jobs found:"
+            echo ""
+            printf "  %-12s %-20s %-15s %-10s\n" "JOBID" "NAME" "NODE" "TIME"
+            echo "  --------------------------------------------------------"
+            echo "$running_jobs" | while read -r line; do
+                printf "  %-12s %-20s %-15s %-10s\n" $line
+            done
+            echo ""
+            print_error "Please specify which job to reattach to with: ./docker.sh reattach <JOBID>"
+            exit 1
+        fi
+    fi
+
+    # Verify the job exists and is running
+    local job_state
+    job_state=$(squeue -j "$jobid" -h -o "%t" 2>/dev/null)
+    
+    if [[ -z "$job_state" ]]; then
+        print_error "Job $jobid not found or no longer exists"
+        exit 1
+    fi
+
+    if [[ "$job_state" != "R" ]]; then
+        print_error "Job $jobid is not running (state: $job_state)"
+        exit 1
+    fi
+
+    local node
+    node=$(squeue -j "$jobid" -h -o "%N" 2>/dev/null)
+    
+    print_info "Reattaching to job $jobid on node $node..."
+    print_info "Starting container shell..."
+
+    # Use srun to run a command on the allocated node
+    srun --jobid="$jobid" --pty bash -c "cd ${SCRIPT_DIR} && ${SCRIPT_DIR}/docker.sh init"
+}
+
+reattach_usage() {
+    echo "Usage: $0 reattach [JOBID] [options]"
+    echo ""
+    echo "Reattach to an existing SLURM allocation and container."
+    echo ""
+    echo "Options:"
+    echo "  -j, --jobid JOBID    Job ID to reattach to (optional if only one job running)"
+    echo "  -h, --help           Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 reattach              # Auto-detect single running job"
+    echo "  $0 reattach 123456       # Reattach to specific job ID"
+    echo "  $0 reattach -j 123456    # Same as above"
+}
+
 usage() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  build   - Build the Docker image"
-    echo "  init    - Initialize and start the container (with X11 support)"
-    echo "  salloc  - Request a SLURM interactive node and start container there"
-    echo "  delete  - Delete the container"
-    echo "  stop    - Stop the running container"
-    echo "  shell   - Open a shell in the running container"
+    echo "  build    - Build the Docker image"
+    echo "  init     - Initialize and start the container (with X11 support)"
+    echo "  salloc   - Request a SLURM interactive node and start container there"
+    echo "  reattach - Reattach to an existing SLURM allocation and container"
+    echo "  delete   - Delete the container"
+    echo "  stop     - Stop the running container"
+    echo "  shell    - Open a shell in the running container"
     echo ""
     echo "SLURM options (for 'salloc' command):"
     echo "  -a, --account ACCOUNT    Account to charge (default: share-ie-idi)"
@@ -221,8 +331,13 @@ usage() {
     echo "  -m, --mem MEMORY         Memory allocation (default: 16G)"
     echo "  -t, --time TIME          Time limit (default: 03:00:00)"
     echo ""
-    echo "Example:"
+    echo "Reattach options:"
+    echo "  -j, --jobid JOBID        Job ID to reattach to (auto-detect if omitted)"
+    echo ""
+    echo "Examples:"
     echo "  ./docker.sh salloc --mem 32G --time 06:00:00 --cpus 8"
+    echo "  ./docker.sh reattach           # Auto-detect running job"
+    echo "  ./docker.sh reattach 123456    # Reattach to specific job"
     echo ""
     echo "For X11 forwarding on a cluster, make sure to:"
     echo "  1. Connect with 'ssh -X user@cluster' or 'ssh -Y user@cluster'"
@@ -241,6 +356,10 @@ case "$1" in
     salloc)
         shift
         salloc_init "$@"
+        ;;
+    reattach)
+        shift
+        reattach "$@"
         ;;
     delete)
         delete
